@@ -150,6 +150,13 @@ class Token
 {
     public:
     
+    Token (const TokenType type, std::string lexeme, int line)
+     : m_type (type)
+     , m_lexeme (lexeme)
+     , m_line (line)
+    {
+    }
+
     std::string str () const
     {
         return "Token (" + to_string (m_type) + ", " + 
@@ -174,23 +181,68 @@ class Scanner
     Scanner (const std::string & code)
         : m_code (code)
     {
-
     }
 
-    std::vector<Token> tokens () const
+
+    bool is_at_end () const
     {
-        return {};
+        return m_current >= m_code.size ();
+    }
+
+    char advance ()
+    {
+       return m_code[m_current++];
+    }
+
+    Token add_token (TokenType type)
+    {
+      return Token (type, m_code.substr (m_start, m_current - m_start), m_line);
+    }
+
+    Token scan_token ()
+    {
+        char c = advance ();
+        switch (c)
+        {
+            case '(': return add_token (TokenType::TOK_LEFT_PAREN);
+            case ')': return add_token (TokenType::TOK_RIGHT_PAREN);
+            case '{': return add_token (TokenType::TOK_LEFT_BRACE);
+            case '}': return add_token (TokenType::TOK_RIGHT_BRACE);
+            case ',': return add_token (TokenType::TOK_COMMA);
+            case '.': return add_token (TokenType::TOK_DOT);
+            case '-': return add_token (TokenType::TOK_MINUS);
+            case '+': return add_token (TokenType::TOK_PLUS);
+            case ';': return add_token (TokenType::TOK_SEMICOLON);
+            case '*': return add_token (TokenType::TOK_STAR);
+        }
+
+      return {TokenType::TOK_EOF, "", m_line};
+    }
+
+    std::vector<Token> scan_tokens ()
+    {
+        while (!is_at_end ())
+        {
+          m_start = m_current;
+          m_tokens.push_back (scan_token ());
+        }
+        m_tokens.push_back (Token (TokenType::TOK_EOF, "", m_line)); 
+        return m_tokens;
     }
 
     std::string m_code;
+    std::vector<Token> m_tokens;
 
+    int m_line = 1;
+    int m_start = 0;
+    int m_current = 0;
 };
 
 void run (const std::string & code)
 {
     std::cout << "RUN: " << code << std::endl;
     Scanner scanner (code);
-    const auto tokens = scanner.tokens ();
+    const auto tokens = scanner.scan_tokens ();
     for (auto token : tokens)
     {
         std::cout << token << std::endl;
