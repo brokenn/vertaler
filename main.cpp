@@ -5,6 +5,7 @@
 #include <streambuf>
 #include <string>
 #include <vector>
+#include <any>
 
 /*
  * Types of Token
@@ -165,20 +166,55 @@ std::string to_string (const TokenType t) {
  */
 class Token {
 public:
+
+  /*
+   * Construct token with value
+   */
+  template <typename T>
+  Token (const TokenType type, std::string lexeme, int line, T && v)
+      : m_type (type)
+      , m_lexeme (std::move (lexeme))
+      , m_line (line)
+      , m_value (v)
+  {
+  }
+
+  /*
+   * Construct Token without value
+   */
   Token (const TokenType type, std::string lexeme, int line)
-      : m_type (type),
-	m_lexeme (lexeme),
-	m_line (line) {}
+    : Token (type, std::move (lexeme), line, std::any {})
+  {
+  }
 
   std::string str () const
   {
-    return "Token (" + to_string (m_type) + ", " + std::to_string (m_line) +
-           ", '" + m_lexeme + "')";
+    std::string s = "Token (";
+    s += to_string (m_type);
+    s += ", ";
+    s += std::to_string (m_line);
+    s += ", ";
+    s += m_lexeme;
+    if (m_value.has_value ())
+    {
+      s += ", ";
+      if (m_type == TokenType::TOK_STRING)
+      {
+        s += "'" + std::any_cast<std::string> (m_value) + "'";
+      }
+      else
+      {
+        s += "UNKNOWN_VALUE_TYPE";
+      }
+    }
+    s += ")";
+    return s;
   }
 
   TokenType m_type;
   std::string m_lexeme;
   int m_line;
+  std::any m_value;
 };
 
 std::ostream &operator<< (std::ostream &os, const Token &token) {
@@ -253,6 +289,53 @@ public:
 
 
   /*
+   * Parse a string
+   */
+  void string ()
+  {
+    /*
+     * Remember line where the string started
+     */
+    const auto from_line = m_line;
+
+    /*
+     * Search for the next quote, incrementing our line counter
+     * in the process.
+     */
+    while (peek () != '"' && !is_at_end ())
+    {
+      if (peek () == '\n')
+      {
+        ++m_line;
+      }
+      advance ();
+    }
+  
+    /*
+     * Unterminated string check
+     */
+    if (is_at_end ())
+    {
+      error () << "Unterminated string, started at line "
+               << from_line << std::endl;
+      return;
+    }
+
+    /*
+     * Consume closing quote
+     */
+    advance ();
+
+    /* 
+     * Add token with surrounding quotes trimmed
+     */
+    const auto s = m_code.substr (m_start+1, m_current - m_start-2);
+
+    add_token (TokenType::TOK_STRING, s);
+
+  }
+
+  /*
    * Create token of type
    */
   void add_token (TokenType type)
@@ -261,6 +344,19 @@ public:
       (Token (type,
               m_code.substr (m_start, m_current - m_start),
               m_line));
+  }
+
+  /*
+   * Add token with value
+   */
+  template <typename T>
+  void add_token (TokenType type, T && v)
+  {
+    m_tokens.push_back
+      (Token (type,
+              m_code.substr (m_start, m_current - m_start),
+              m_line,
+              v));
   }
 
   /*
@@ -353,6 +449,29 @@ public:
          */
         add_token (TokenType::TOK_SLASH);
       }
+      break;
+
+    /*
+     * Whitespace
+     */
+    case ' ':
+    case '\r':
+    case '\t':
+      break;
+
+    /*
+     * Newline
+     */
+    case '\n':
+      m_line++;
+      break;
+
+
+    /*
+     * Strings
+     */
+    case '"':
+      string ();
       break;
 
     default:
