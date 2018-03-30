@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <any>
+#include <map>
 
 /*
  * Types of Token
@@ -355,6 +356,19 @@ public:
     return c >= '0' && c <= '9';
   }
 
+  bool is_alpha (char c) const
+  {
+    return (c >= 'a' && c <= 'z') ||
+           (c >= 'A' && c <= 'Z') ||
+           c == '_';
+  }
+
+  bool is_alphanumeric (char c) const
+  {
+    return is_digit (c) || is_alpha (c);
+  }
+
+
   /*
    * Parse number literal
    *  Valid numbers:
@@ -397,6 +411,51 @@ public:
     add_token (TokenType::TOK_NUMBER, f);
   }
 
+  /*
+   * Add identifier, which might be a keyword
+   */
+  void identifier ()
+  {
+    while (is_alphanumeric (peek ()))
+    {
+      advance ();
+    }
+
+    /*
+     * Extract text
+     */
+    const auto text = m_code.substr (m_start, m_current - m_start);
+
+    /*
+     * Define keywords
+     */
+    static const std::map<std::string, TokenType> keywords = 
+      {{"and",    TokenType::TOK_AND},
+       {"class",  TokenType::TOK_CLASS},
+       {"else",   TokenType::TOK_ELSE},
+       {"false",  TokenType::TOK_FALSE},
+       {"for",    TokenType::TOK_FOR},
+       {"fun",    TokenType::TOK_FUN},
+       {"if",     TokenType::TOK_IF},
+       {"nil",    TokenType::TOK_NIL},
+       {"or",     TokenType::TOK_OR},
+       {"print",  TokenType::TOK_PRINT},
+       {"return", TokenType::TOK_RETURN},
+       {"super",  TokenType::TOK_SUPER},
+       {"this",   TokenType::TOK_THIS},
+       {"true",   TokenType::TOK_TRUE},
+       {"var",    TokenType::TOK_VAR},
+       {"while",  TokenType::TOK_WHILE}};
+
+    /*
+     * If it is a keyword, add that, otherwise add identifier
+     */
+    const auto it = keywords.find (text);
+
+    add_token (it == keywords.end () ?
+               TokenType::TOK_IDENTIFIER :
+               it->second);
+  }
 
   /*
    * Create token of type
@@ -555,7 +614,20 @@ public:
       break;
 
     default:
-      error () << "Unexpected Character '" << c << "'" << std::endl;
+      /*
+       * Identifiers or keywords
+       */
+      if (is_alpha (c))
+      {
+        identifier ();
+      }
+      else
+      {
+        /*
+         * Error case
+         */
+        error () << "Unexpected Character '" << c << "'" << std::endl;
+      }
     }
   }
 
