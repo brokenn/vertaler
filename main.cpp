@@ -202,6 +202,10 @@ public:
       {
         s += "'" + std::any_cast<std::string> (m_value) + "'";
       }
+      else if (m_type == TokenType::TOK_NUMBER)
+      {
+        s += std::to_string (std::any_cast<double> (m_value));
+      }
       else
       {
         s += "UNKNOWN_VALUE_TYPE";
@@ -263,6 +267,18 @@ public:
   char peek () const
   {
     return is_at_end () ? '\0' : m_code[m_current];
+  }
+
+  /*
+   * Peek two chars ahead.
+   * This could be rolled into the peek function above, but is
+   * implemented as a separate function instead to clarify that this
+   * scanner only has lookahead 2 and no more.
+   *
+   */
+  char peek_next () const
+  {
+    return (m_code.size () - m_current) < 2 ? '\0' : m_code[m_current+1];
   }
 
   /*
@@ -332,8 +348,55 @@ public:
     const auto s = m_code.substr (m_start+1, m_current - m_start-2);
 
     add_token (TokenType::TOK_STRING, s);
-
   }
+
+  bool is_digit (char c) const
+  {
+    return c >= '0' && c <= '9';
+  }
+
+  /*
+   * Parse number literal
+   *  Valid numbers:
+   *   1
+   *   1.23
+   *  Invalid numbers:
+   *   .23
+   *   1223.
+   */
+  void number ()
+  {
+    /*
+     * Eat all the leading digits
+     */
+    while (is_digit (peek ()))
+    {
+      advance ();
+    }
+
+    /*
+     * If the next is a period, followed by digits, keep eating
+     */
+    if (peek () == '.' && is_digit (peek_next ()))
+    {
+      /*
+       * Consume the period
+       */
+      advance ();
+
+      /*
+       * Consume all digits
+       */
+      while (is_digit (peek ()))
+      {
+        advance ();
+      }
+    }
+    
+    const auto f = std::atof (m_code.substr (m_start, m_current - m_start).c_str ());
+    add_token (TokenType::TOK_NUMBER, f);
+  }
+
 
   /*
    * Create token of type
@@ -472,6 +535,23 @@ public:
      */
     case '"':
       string ();
+      break;
+
+
+    /*
+     * Number literals
+     */
+    case '0':
+    case '1':
+    case '2':
+    case '3':
+    case '4':
+    case '5':
+    case '6':
+    case '7':
+    case '8':
+    case '9':
+      number ();
       break;
 
     default:
