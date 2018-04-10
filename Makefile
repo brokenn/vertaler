@@ -1,5 +1,5 @@
 main: main.cpp
-	g++ main.cpp -Wall -Werror -o main -std=c++17 -g -O0
+	g++ main.cpp token.cpp scanner.cpp -Wall -Werror -o vertaler -std=c++17 -g -O0
 
 
 clean:
