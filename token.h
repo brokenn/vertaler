@@ -80,8 +80,8 @@ public:
   /*
    * Construct token with value
    */
-  template <typename T>
-  Token (const TokenType type, std::string lexeme, int line, T && v);
+  Token (const TokenType type, std::string lexeme, int line, double value);
+  Token (const TokenType type, std::string lexeme, int line, std::string value);
 
   /*
    * Construct Token without value

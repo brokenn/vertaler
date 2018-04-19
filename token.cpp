@@ -99,8 +99,15 @@ std::string to_string (const TokenType t) {
 /*
  * Construct token with value
  */
-template <typename T>
-Token::Token (const TokenType type, std::string lexeme, int line, T && v)
+Token::Token (const TokenType type, std::string lexeme, int line, double v)
+    : m_type (type)
+    , m_lexeme (std::move (lexeme))
+    , m_line (line)
+    , m_value (v)
+{
+}
+
+Token::Token (const TokenType type, std::string lexeme, int line, std::string v)
     : m_type (type)
     , m_lexeme (std::move (lexeme))
     , m_line (line)
@@ -112,7 +119,10 @@ Token::Token (const TokenType type, std::string lexeme, int line, T && v)
  * Construct Token without value
  */
 Token::Token (const TokenType type, std::string lexeme, int line)
-  : Token (type, std::move (lexeme), line, std::any {})
+    : m_type (type)
+    , m_lexeme (std::move (lexeme))
+    , m_line (line)
+    , m_value ()
 {
 }
 
@@ -149,5 +159,3 @@ std::ostream &operator<< (std::ostream &os, const Token &token) {
   return os;
 }
 
-template Token::Token (const TokenType, std::string, int, const double &);
-template Token::Token (const TokenType, std::string, int, const std::string &);
