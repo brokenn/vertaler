@@ -3,4 +3,4 @@ main: main.cpp
 
 
 clean:
-	rm main
+	rm vertaler
